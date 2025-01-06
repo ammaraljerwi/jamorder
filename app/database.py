@@ -1,51 +1,51 @@
-import sqlite3
-
-from app.config import DATABASE_PATH
+from sqlalchemy import text
+import streamlit as st
 
 # Create a connection to the database
 def create_connection():
-    return sqlite3.connect(DATABASE_PATH)
+    # conn = st.connection("postgresql", type="sql")
+    conn = st.connection("orders_db", type="sql")
+    return conn
 
 # Create the database schema
 def init_db():
     conn = create_connection()
-    cursor = conn.cursor()
-    
-    # Create tables if they do not exist
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS Users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL
+    with conn.session as cursor:
+        # Create tables if they do not exist
+        cursor.execute(text("""
+            CREATE TABLE IF NOT EXISTS Users (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL
+            )
+        """)
         )
-    """)
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS Orders (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            status TEXT NOT NULL DEFAULT 'pending',
-            FOREIGN KEY (user_id) REFERENCES Users(id)
-        )
-    """)
+        cursor.execute(text("""
+            CREATE TABLE IF NOT EXISTS Orders (
+                id SERIAL PRIMARY KEY,
+                user_id INT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                FOREIGN KEY (user_id) REFERENCES Users(id)
+            )
+        """))
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS OrderItems (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            order_id INTEGER NOT NULL,
-            product TEXT NOT NULL,
-            quantity INTEGER NOT NULL,
-            size TEXT NOT NULL,
-            FOREIGN KEY (order_id) REFERENCES Orders(id)
-        )
-    """)
+        cursor.execute(text("""
+            CREATE TABLE IF NOT EXISTS OrderItems (
+                id SERIAL PRIMARY KEY,
+                order_id INT NOT NULL,
+                product TEXT NOT NULL,
+                quantity INTEGER NOT NULL,
+                size TEXT NOT NULL,
+                FOREIGN KEY (order_id) REFERENCES Orders(id)
+            )
+        """))
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS Products (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            product_name TEXT NOT NULL,
-            size TEXT NOT NULL
-        )
-    """)
+        cursor.execute(text("""
+            CREATE TABLE IF NOT EXISTS Products (
+                id SERIAL PRIMARY KEY,
+                product_name TEXT NOT NULL,
+                size TEXT NOT NULL
+            )
+        """))
 
-    conn.commit()
-    conn.close()
+        cursor.commit()

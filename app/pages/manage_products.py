@@ -32,7 +32,12 @@ else:
 st.subheader("Current Products")
 products = get_products()
 if products:
+    products_to_sizes = {}
     for product, size in products:
-        st.write(f"- {product} ({size})")
+        if product not in products_to_sizes:
+            products_to_sizes[product] = []
+        products_to_sizes[product].append(size)
+    for product, size in products_to_sizes.items():
+        st.write(f'{product}: {", ".join(sorted(size))}')
 else:
     st.write("No products available.")
