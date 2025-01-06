@@ -1,7 +1,8 @@
 import streamlit as st
+import pandas as pd
 
 from app.models import add_order, get_products
-from app.controllers import add_item
+from app.controllers import add_item, adjust_item, display_items
 
 st.header("Add a New Order")
 
@@ -35,8 +36,19 @@ if st.button("Add Item"):
 
 # Display current items
 st.write("### Current Items:")
+
+
 for item in st.session_state["order_items"]:
-    st.write(f"- {item['quantity']}x {item['size']} {item['product']}")
+    with st.container():
+        cols = st.columns(2)
+        cols[0].write(f"{item['quantity']}x {item['size']} {item['product']}")
+        with cols[1]:
+            quantity = st.number_input("Adjust Quantity", min_value=0, step=1, value=item['quantity'], key=(item['product'], item['size']))
+            if quantity != item['quantity']:
+                st.session_state["order_items"] = adjust_item(st.session_state["order_items"], item['product'], quantity, item['size'])
+                st.rerun()
+
+print(st.session_state["order_items"])
 
 # Submit order
 if st.button("Submit Order"):

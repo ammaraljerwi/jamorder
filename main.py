@@ -33,7 +33,8 @@ if st.session_state.logged_in:
          "Orders": [st.Page("app/pages/add_orders.py", title="Add Orders"),
                     st.Page("app/pages/manage_orders.py", title="Manage Orders")],
          "Products": [st.Page("app/pages/manage_products.py", title="Manage Products"),
-                      st.Page("app/pages/manage_batch.py", title="Manage Batches")]
+                      st.Page("app/pages/manage_batch.py", title="Manage Batches"),
+                      st.Page("app/pages/manage_inventory.py", title="Manage Inventory")],
          }
     )
 else:
