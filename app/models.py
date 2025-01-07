@@ -5,9 +5,13 @@ from app.database import create_connection
 def add_product(product_name, size):
     conn = create_connection()
     with conn.session as session:
-        session.execute(
-            text("INSERT INTO Products (product_name, size) VALUES (:product_name, :size)"),
+        product_id = session.execute(
+            text("INSERT INTO Products (product_name, size) VALUES (:product_name, :size) RETURNING id"),
             [{"product_name": product_name, "size": size}])
+        session.execute(
+            text("INSERT INTO Inventory (product_id, quantity) VALUES (:product_id, 0)"),
+            [{"product_id": product_id}]
+        )
         session.commit()
 
 # Remove a product
@@ -18,6 +22,15 @@ def remove_product(product_name, size):
             text("DELETE FROM Products WHERE product_name = :product_name AND size = :size"), 
             [{"product_name": product_name, "size": size}])
         session.commit()
+
+# Find a product
+def find_product(product_name, size):
+    conn = create_connection()
+    with conn.session as session:
+        product = session.execute(
+            text("SELECT id FROM Products WHERE product_name = :product_name AND size = :size"),
+            [{"product_name": product_name, "size": size}]).fetchone()
+    return product
 
 # Retrieve all products
 def get_products():
@@ -79,7 +92,7 @@ def get_orders(status="all"):
         if status != "all":
             orders = session.execute(
                 text("""
-                    SELECT Orders.id, Users.name, Orders.status 
+                    SELECT Orders.id, Users.name, Orders.status, Orders.paid 
                     FROM Orders 
                     JOIN Users ON Orders.user_id = Users.id
                     WHERE Orders.status = :status
@@ -88,7 +101,7 @@ def get_orders(status="all"):
         else:
             orders = session.execute(
                 text("""
-                    SELECT Orders.id, Users.name, Orders.status 
+                    SELECT Orders.id, Users.name, Orders.status, Orders.paid 
                     FROM Orders 
                     JOIN Users ON Orders.user_id = Users.id
                 """)).fetchall()
@@ -96,11 +109,11 @@ def get_orders(status="all"):
         # Retrieve order items for each order
         orders_with_items = []
         for order in orders:
-            order_id, user_name, status = order
+            order_id, user_name, status, paid = order
             items = session.execute(
                 text("SELECT product, quantity, size FROM OrderItems WHERE order_id = :order_id"),
                 [{"order_id": order_id}]).fetchall()
-            orders_with_items.append((order_id, user_name, status, items))
+            orders_with_items.append((order_id, user_name, status, paid, items))
 
     return orders_with_items
 
@@ -139,3 +152,41 @@ def fulfill_order(order_id):
             text("UPDATE Orders SET status = 'fulfilled' WHERE id = :order_id"),
             [{"order_id": order_id}])
         session.commit()
+
+# Mark order as paid
+def order_paid(order_id):
+    conn = create_connection()
+    with conn.session as session:
+        session.execute(
+            text("UPDATE Orders SET paid = TRUE WHERE id = :order_id"),
+            [{"order_id": order_id}])
+        session.commit()
+    
+
+# Adjust inventory
+def adjust_inventory(product_name, size, quantity):
+    conn = create_connection()
+    with conn.session as session:
+        product = session.execute(
+            text("SELECT id FROM Products WHERE product_name = :product_name AND size = :size"),
+            [{"product_name": product_name, "size": size}]).fetchone()
+        if not product:
+            raise ValueError(f"Product {product_name} with size {size} not found.")
+        product_id = product[0]
+
+        session.execute(
+            text("UPDATE Inventory SET quantity = :quantity WHERE product_id = :product_id"),
+            [{"quantity": quantity, "product_id": product_id}])
+        session.commit()
+
+# Retrieve inventory
+def get_inventory():
+    conn = create_connection()
+    with conn.session as session:
+        inventory = session.execute(
+            text("""
+                SELECT Products.product_name, Products.size, Inventory.quantity
+                FROM Products
+                JOIN Inventory ON Products.id = Inventory.product_id
+            """)).fetchall()
+    return inventory
